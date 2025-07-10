@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "341113239686",
+    "project_id": "rent-flow-ccjjwn",
+    "storage_bucket": "rent-flow-ccjjwn.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:341113239686:android:d0464c4110af469e9ef907",
+        "android_client_info": {
+          "package_name": "com.example.rentoflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrC1AfYm4KxdY_vR4KXifXmmpicQreIBY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:341113239686:android:faa0acc48a45167f9ef907",
+        "android_client_info": {
+          "package_name": "com.flutterflow.finwallet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrC1AfYm4KxdY_vR4KXifXmmpicQreIBY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
