@@ -4,9 +4,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart'; // For generating UUIDs
-import 'dart:convert'; // For json.decode
+
+// **IMPORTANT**: Make sure you have run `flutterfire configure` and this file exists.
+import 'package:rentoflow/firebase_options.dart';
 
 class FirebaseProvider extends ChangeNotifier {
+  // Private variables to hold Firebase service instances and state
   FirebaseApp? _firebaseApp;
   FirebaseFirestore? _db;
   FirebaseAuth? _auth;
@@ -15,8 +18,9 @@ class FirebaseProvider extends ChangeNotifier {
   bool _loadingFirebase = true;
   String? _errorMessage;
   ConfirmationResult? _confirmationResult; // For phone auth
-  String? _canvasAppId; // New: To store the Canvas app ID
+  bool _justSignedUp = false; // New: Flag to track if a user just signed up
 
+  // Public getters to expose state to the UI safely
   FirebaseApp? get firebaseApp => _firebaseApp;
   FirebaseFirestore? get db => _db;
   FirebaseAuth? get auth => _auth;
@@ -24,74 +28,54 @@ class FirebaseProvider extends ChangeNotifier {
   String? get userId => _userId;
   bool get loadingFirebase => _loadingFirebase;
   String? get errorMessage => _errorMessage;
-  String? get canvasAppId => _canvasAppId; // New: Getter for Canvas app ID
+  bool get justSignedUp => _justSignedUp; // New: Getter for the signup flag
 
+  // Constructor: Kicks off the Firebase initialization process
   FirebaseProvider() {
     _initializeFirebase();
   }
 
+  // Handles the entire Firebase setup process using the recommended FlutterFire approach
   Future<void> _initializeFirebase() async {
     try {
-      const String appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
-      _canvasAppId = appId; // Use the local variable here
-      const String firebaseConfigJson = String.fromEnvironment('FIREBASE_CONFIG', defaultValue: '{}');
-      final Map<String, dynamic> firebaseConfig = firebaseConfigJson.isNotEmpty
-          ? Map<String, dynamic>.from(json.decode(firebaseConfigJson))
-          : {};
-
-      if (firebaseConfig.isEmpty) {
-        _errorMessage = "Firebase config is missing or empty.";
-        _loadingFirebase = false;
-        notifyListeners();
-        return;
-      }
-
+      // **THE FIX IS HERE**: We now use the `firebase_options.dart` file.
+      // This is the standard way and avoids all command-line issues.
       _firebaseApp = await Firebase.initializeApp(
-        options: FirebaseOptions(
-          apiKey: firebaseConfig['apiKey'] ?? 'YOUR_API_KEY',
-          appId: firebaseConfig['appId'] ?? 'YOUR_APP_ID',
-          messagingSenderId: firebaseConfig['messagingSenderId'] ?? 'YOUR_MESSAGING_SENDER_ID',
-          projectId: firebaseConfig['projectId'] ?? 'YOUR_PROJECT_ID',
-          storageBucket: firebaseConfig['storageBucket'] ?? 'YOUR_STORAGE_BUCKET',
-        ),
+        options: DefaultFirebaseOptions.currentPlatform,
       );
 
-      // Use null assertion operator '!' because _firebaseApp is guaranteed to be non-null after initializeApp
+      // Initialize Firestore and Auth instances for the specific app
       _db = FirebaseFirestore.instanceFor(app: _firebaseApp!);
       _auth = FirebaseAuth.instanceFor(app: _firebaseApp!);
 
-      // Listen for auth state changes first
+      // Set up a listener for authentication state changes
       _auth!.authStateChanges().listen((User? user) {
         _currentUser = user;
         if (user != null) {
-          _userId = user.uid;
+          _userId = user.uid; // Use the Firebase UID for logged-in users
           debugPrint("Auth state changed. User ID: $_userId");
         } else {
-          _userId = const Uuid().v4(); // Generate a new UUID for anonymous/unauthenticated users
-          debugPrint("Auth state changed. No user, generated random ID: $_userId");
+          // When no user is logged in, we can still have a temporary ID if needed,
+          // but the user object will be null.
+          _userId = const Uuid().v4(); 
+          debugPrint("Auth state changed. No user is signed in.");
         }
-        _loadingFirebase = false; // Set loading to false once initial auth state is determined
+        _loadingFirebase = false; // Mark loading as complete
         notifyListeners();
       });
 
-      // Try to sign in with custom token if available, otherwise anonymous sign-in
-      const String initialAuthToken = String.fromEnvironment('INITIAL_AUTH_TOKEN', defaultValue: '');
-      if (initialAuthToken.isNotEmpty) {
-        await _auth!.signInWithCustomToken(initialAuthToken);
-        debugPrint("Signed in with custom token.");
-      } else if (_auth!.currentUser == null) { // Only sign in anonymously if no user is already logged in
-        await _auth!.signInAnonymously();
-        debugPrint("Signed in anonymously.");
-      }
+      // **CHANGE**: The automatic anonymous sign-in has been removed.
+      // The app will now wait for the user to explicitly sign in.
 
     } catch (e) {
       debugPrint("Error initializing Firebase: $e");
       _errorMessage = "Error initializing Firebase: $e";
       _loadingFirebase = false;
-    } finally {
       notifyListeners();
     }
   }
+
+  // --- Authentication Methods ---
 
   Future<UserCredential?> signUpWithEmailPassword(String email, String password) async {
     try {
@@ -103,6 +87,7 @@ class FirebaseProvider extends ChangeNotifier {
       );
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
+      _justSignedUp = true; // New: Set flag to true on successful signup
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -126,10 +111,16 @@ class FirebaseProvider extends ChangeNotifier {
       );
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
+      _justSignedUp = false; // New: Set flag to false on successful login
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      _errorMessage = e.message;
+      // New: Better error handling for specific cases
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        _errorMessage = 'Invalid email or password. Please try again.';
+      } else {
+        _errorMessage = e.message;
+      }
       notifyListeners();
       return null;
     } catch (e) {
@@ -139,17 +130,13 @@ class FirebaseProvider extends ChangeNotifier {
     }
   }
 
-  // Phone number authentication - Step 1: Send OTP
+  // Phone Auth Step 1: Send OTP to the user's phone
   Future<void> sendOtp(String phoneNumber) async {
     try {
       _errorMessage = null;
       notifyListeners();
-      // For mobile platforms (Android/iOS), Firebase handles reCAPTCHA automatically.
-      // RecaptchaVerifier is primarily for web.
       _confirmationResult = await _auth!.signInWithPhoneNumber(
         phoneNumber,
-        // Removed RecaptchaVerifier as it's not typically needed or directly configured for mobile.
-        // The Firebase SDK handles the underlying verification mechanisms (e.g., SafetyNet, DeviceCheck).
       );
       notifyListeners();
       debugPrint("OTP sent to $phoneNumber");
@@ -164,7 +151,7 @@ class FirebaseProvider extends ChangeNotifier {
     }
   }
 
-  // Phone number authentication - Step 2: Verify OTP
+  // Phone Auth Step 2: Verify the OTP entered by the user
   Future<UserCredential?> verifyOtp(String otp) async {
     if (_confirmationResult == null) {
       _errorMessage = 'OTP not sent. Please try sending OTP again.';
@@ -177,6 +164,7 @@ class FirebaseProvider extends ChangeNotifier {
       UserCredential userCredential = await _confirmationResult!.confirm(otp);
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
+      _justSignedUp = false; // Assume phone login is for existing users
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -196,12 +184,13 @@ class FirebaseProvider extends ChangeNotifier {
     if (_auth != null) {
       await _auth!.signOut();
       _currentUser = null;
-      _userId = const Uuid().v4(); // Ensure a new anonymous ID after sign out
+      _userId = const Uuid().v4(); // Generate a new anonymous ID after sign out
       notifyListeners();
       debugPrint("User signed out.");
     }
   }
 
+  // Utility method to clear error messages from the UI
   void clearErrorMessage() {
     _errorMessage = null;
     notifyListeners();

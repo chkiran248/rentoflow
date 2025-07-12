@@ -1,14 +1,24 @@
 // lib/main.dart
+
+// Import necessary packages for UI, state management, and screens
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:firebase_core/firebase_core.dart'; // Removed unused import
-
 import 'package:rentoflow/providers/firebase_provider.dart';
 import 'package:rentoflow/screens/persona_selection_screen.dart';
-import 'package:rentoflow/screens/auth_screen.dart'; // Import the new auth screen
+import 'package:rentoflow/screens/auth_screen.dart';
 
+// The main entry point for the application.
 void main() async {
+  // 1. Ensure Flutter bindings are initialized before running the app.
+  // This is crucial for using plugins like Firebase before the UI is built.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. Run the app, wrapping it with ChangeNotifierProvider.
+  // This is the key step:
+  //  - It creates an instance of your FirebaseProvider.
+  //  - The constructor of your FirebaseProvider should be handling the
+  //    Firebase.initializeApp() call.
+  //  - This makes the provider instance available to all widgets down the tree.
   runApp(
     ChangeNotifierProvider(
       create: (context) => FirebaseProvider(),
@@ -17,13 +27,19 @@ void main() async {
   );
 }
 
+// The root widget for the RentOFlow application.
 class RentOFlowApp extends StatelessWidget {
   const RentOFlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // 3. Listen to the FirebaseProvider to get the current state.
+    // This widget will rebuild whenever notifyListeners() is called in the provider,
+    // for example, when Firebase initialization finishes or the user logs in/out.
     final firebaseProvider = Provider.of<FirebaseProvider>(context);
 
+    // --- State 1: Loading ---
+    // Show a loading indicator while the FirebaseProvider is initializing.
     if (firebaseProvider.loadingFirebase) {
       return MaterialApp(
         home: Scaffold(
@@ -39,6 +55,7 @@ class RentOFlowApp extends StatelessWidget {
                   "Loading RentOFlow...",
                   style: TextStyle(fontSize: 18, color: Colors.grey),
                 ),
+                // Display an error message if one exists
                 if (firebaseProvider.errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -55,33 +72,38 @@ class RentOFlowApp extends StatelessWidget {
       );
     }
 
-    // Determine the initial screen based on authentication state
+    // --- State 2: Loaded ---
+    // 4. Determine which screen to show based on the user's authentication status
+    //    which is managed by the FirebaseProvider.
     Widget initialScreen;
     if (firebaseProvider.currentUser != null && !firebaseProvider.currentUser!.isAnonymous) {
+      // If the user is logged in, show the main app screen.
       initialScreen = const PersonaSelectionScreen();
     } else {
-      initialScreen = const AuthScreen(); // Redirect to AuthScreen if not authenticated
+      // If no user is logged in, show the authentication screen.
+      initialScreen = const AuthScreen();
     }
 
+    // Build the main app with a custom theme.
     return MaterialApp(
       title: 'RentOFlow',
       theme: ThemeData(
         primarySwatch: Colors.green,
         primaryColor: const Color(0xFF227d49), // Dark Green
-        canvasColor: Colors.grey[50], // Light gray background for app
+        canvasColor: Colors.grey[50],
         scaffoldBackgroundColor: Colors.grey[50],
-        cardTheme: CardThemeData( // Changed from CardTheme to CardThemeData
+        cardTheme: const CardThemeData( // CORRECTED: Was CardTheme, now is CardThemeData
           elevation: 4.0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0), // Rounded corners
+            borderRadius: BorderRadius.all(Radius.circular(16.0)),
           ),
-          margin: EdgeInsets.zero, // No default margin
+          margin: EdgeInsets.zero,
         ),
-        appBarTheme: AppBarTheme(
+        appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
-          foregroundColor: Colors.grey[800],
+          foregroundColor: Colors.grey,
           elevation: 2.0,
-          shape: const RoundedRectangleBorder(
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(16.0),
             ),
@@ -95,7 +117,7 @@ class RentOFlowApp extends StatelessWidget {
           textTheme: ButtonTextTheme.primary,
         ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(fontFamily: 'Inter'), // Placeholder for Inter font
+          bodyLarge: TextStyle(fontFamily: 'Inter'),
           bodyMedium: TextStyle(fontFamily: 'Inter'),
           labelLarge: TextStyle(fontFamily: 'Inter'),
         ),
@@ -125,15 +147,15 @@ class RentOFlowApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           hintStyle: TextStyle(color: Colors.grey[500]),
         ),
-        // Color Scheme for a more modern look
         colorScheme: ColorScheme.fromSwatch(
           primarySwatch: Colors.green,
           accentColor: const Color(0xFFc79e1c), // Gold/yellow accent
           backgroundColor: Colors.grey[50],
         ).copyWith(
-          secondary: const Color(0xFFc79e1c), // Accent color
+          secondary: const Color(0xFFc79e1c), // Modern way to set accent color
         ),
       ),
+      // Set the determined initial screen as the home screen.
       home: initialScreen,
     );
   }
