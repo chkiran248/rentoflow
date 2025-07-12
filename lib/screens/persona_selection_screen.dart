@@ -48,7 +48,7 @@ class _PersonaSelectionScreenState extends State<PersonaSelectionScreen> {
                 end: Alignment.bottomRight,
                 colors: [
                   Theme.of(context).primaryColor,
-                  const Color(0xFF8cc045),
+                  const Color(0xFFA5D6A7),
                 ],
               ),
             ),
@@ -114,7 +114,7 @@ class _PersonaSelectionScreenState extends State<PersonaSelectionScreen> {
                             MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
                           );
                         },
-                        const Color(0xFF2ca24a),
+                        const Color(0xFF81C784),
                       ),
                       const SizedBox(height: 16),
                       _buildPersonaButton(
@@ -127,7 +127,7 @@ class _PersonaSelectionScreenState extends State<PersonaSelectionScreen> {
                             MaterialPageRoute(builder: (context) => const TenantDashboardScreen()),
                           );
                         },
-                        const Color(0xFFc79e1c),
+                        const Color(0xFFFFD54F),
                       ),
                       const SizedBox(height: 16),
                       _buildPersonaButton(

@@ -3,15 +3,20 @@
 // Import necessary packages for UI, state management, and screens
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:rentoflow/providers/firebase_provider.dart';
 import 'package:rentoflow/screens/persona_selection_screen.dart';
 import 'package:rentoflow/screens/auth_screen.dart';
+import 'package:rentoflow/screens/owner_dashboard_screen.dart';
 
 // The main entry point for the application.
 void main() async {
   // 1. Ensure Flutter bindings are initialized before running the app.
   // This is crucial for using plugins like Firebase before the UI is built.
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize locale data for date formatting
+  await initializeDateFormatting();
 
   // 2. Run the app, wrapping it with ChangeNotifierProvider.
   // This is the key step:
@@ -77,8 +82,8 @@ class RentOFlowApp extends StatelessWidget {
     //    which is managed by the FirebaseProvider.
     Widget initialScreen;
     if (firebaseProvider.currentUser != null && !firebaseProvider.currentUser!.isAnonymous) {
-      // If the user is logged in, show the main app screen.
-      initialScreen = const PersonaSelectionScreen();
+      // If the user is logged in, show the owner dashboard by default.
+      initialScreen = const OwnerDashboardScreen();
     } else {
       // If no user is logged in, show the authentication screen.
       initialScreen = const AuthScreen();
@@ -89,7 +94,7 @@ class RentOFlowApp extends StatelessWidget {
       title: 'RentOFlow',
       theme: ThemeData(
         primarySwatch: Colors.green,
-        primaryColor: const Color(0xFF227d49), // Dark Green
+        primaryColor: const Color(0xFF81C784), // Light Green
         canvasColor: Colors.grey[50],
         scaffoldBackgroundColor: Colors.grey[50],
         cardTheme: const CardThemeData( // CORRECTED: Was CardTheme, now is CardThemeData
@@ -134,7 +139,7 @@ class RentOFlowApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.0),
-            borderSide: const BorderSide(color: Color(0xFF8cc045), width: 2.0),
+            borderSide: const BorderSide(color: Color(0xFF81C784), width: 2.0),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.0),
@@ -149,10 +154,10 @@ class RentOFlowApp extends StatelessWidget {
         ),
         colorScheme: ColorScheme.fromSwatch(
           primarySwatch: Colors.green,
-          accentColor: const Color(0xFFc79e1c), // Gold/yellow accent
+          accentColor: const Color(0xFFFFD54F), // Light Gold accent
           backgroundColor: Colors.grey[50],
         ).copyWith(
-          secondary: const Color(0xFFc79e1c), // Modern way to set accent color
+          secondary: const Color(0xFFFFD54F), // Modern way to set accent color
         ),
       ),
       // Set the determined initial screen as the home screen.

@@ -77,6 +77,12 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       centerTitle: false,
       actions: [
+        // Persona Switch Icon
+        IconButton(
+          onPressed: onChangePersona,
+          icon: const Icon(Icons.swap_horiz, size: 20),
+          tooltip: 'Switch Persona',
+        ),
         // Marketing Banner (simplified for Flutter)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),

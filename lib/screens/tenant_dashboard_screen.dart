@@ -84,9 +84,9 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     
     final tenantProfile = {
       'name': userName,
-      'phone': firebaseProvider.currentUser?.phoneNumber ?? '+91 98765 43210',
+      'phone': firebaseProvider.currentUser?.phoneNumber ?? 'Not provided',
       'status': 'Active',
-      'property': 'Apt 4B, Green Towers',
+      'property': 'Not assigned',
     };
 
     return CustomCard(
@@ -159,10 +159,9 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     
     final dataService = DataService(firebaseProvider.db!, userId);
     
-    final upcomingDues = [
-      {'date': DateTime.now().add(const Duration(days: 5)), 'amount': 12000.0, 'status': 'Due'}
-    ];
-    final advanceRent = 24000.0;
+    // Get real data from Firebase instead of dummy data
+    final upcomingDues = <Map<String, dynamic>>[];
+    final advanceRent = 0.0;
 
     return GridView.count(
       shrinkWrap: true,
@@ -178,7 +177,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           upcomingDues.isNotEmpty ? (upcomingDues[0]['amount'] as num).toLocaleString() : 'No Dues',
           upcomingDues.isNotEmpty ? 'Due on ${DateFormat.yMMMd('en_IN').format(upcomingDues[0]['date'] as DateTime)}' : '',
           Icons.payments,
-          const Color(0xFF2ca24a),
+          const Color(0xFF81C784),
           () {
             showSnackBar(context, "Simulating rent payment...");
           },
@@ -189,7 +188,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           advanceRent.toLocaleString(),
           'Balance available for future payments.',
           Icons.wallet,
-          const Color(0xFFc79e1c),
+          const Color(0xFFFFD54F),
           null,
         ),
         CustomCard(
@@ -341,24 +340,11 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 180,
-                  child: ListView(
-                    children: [
-                      _buildNotificationItem(
-                        'Rent for July is due on July 5, 2025.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 7, 5, 10, 0)),
-                        Colors.blue[50]!,
-                      ),
-                      _buildNotificationItem(
-                        'Your KYC documents are pending verification.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 28, 9, 0)),
-                        Colors.yellow[50]!,
-                      ),
-                      _buildNotificationItem(
-                        'Payment of ₹12,000 received for June rent.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 5, 11, 30)),
-                        Colors.green[50]!,
-                      ),
-                    ],
+                  child: const Center(
+                    child: Text(
+                      'No notifications yet.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                 ),
               ],
@@ -394,7 +380,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                     icon: const Icon(Icons.send, size: 20),
                     label: const Text('Contact Property Owner'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFc79e1c),
+                      backgroundColor: const Color(0xFFFFD54F),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

@@ -12,7 +12,6 @@ import 'package:rentoflow/screens/persona_selection_screen.dart';
 import 'package:rentoflow/screens/auth_screen.dart';
 import 'package:rentoflow/common/app_navigation_bar.dart';
 import 'package:rentoflow/screens/profile_view.dart' as profile_screen;
-import 'package:rentoflow/services/data_service.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -168,7 +167,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           icon: const Icon(Icons.add_home_work_outlined),
           label: const Text('Add New Property'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2ca24a),
+            backgroundColor: const Color(0xFF81C784),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -216,7 +215,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               'Overall revenue from all properties.',
               const Icon(Icons.account_balance_wallet, color: Colors.white, size: 36),
               LinearGradient(
-                colors: [const Color(0xFF2ca24a), const Color(0xFF8cc045)],
+                colors: [const Color(0xFF81C784), const Color(0xFFA5D6A7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -228,7 +227,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               'Portion of income allocated to savings/investments.',
               const Icon(Icons.savings_outlined, color: Colors.white, size: 36),
               LinearGradient(
-                colors: [const Color(0xFFc79e1c), Colors.amber[700]!],
+                colors: [const Color(0xFFFFD54F), const Color(0xFFFFE082)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
