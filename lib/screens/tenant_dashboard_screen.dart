@@ -7,6 +7,10 @@ import 'package:rentoflow/common/widgets.dart'; // For common widgets
 import 'package:rentoflow/common/extensions.dart'; // For NumExtension
 import 'package:rentoflow/providers/firebase_provider.dart'; // For FirebaseProvider
 import 'package:rentoflow/screens/persona_selection_screen.dart'; // For navigation
+import 'package:rentoflow/screens/auth_screen.dart';
+import 'package:rentoflow/common/app_navigation_bar.dart';
+import 'package:rentoflow/services/data_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TenantDashboardScreen extends StatefulWidget {
   const TenantDashboardScreen({super.key});
@@ -25,6 +29,8 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
       appBar: DashboardAppBar(
         title: 'Tenant Portal',
         userId: userId ?? 'Loading...',
+        userName: 'Tenant User',
+        userEmail: firebaseProvider.currentUser?.email ?? 'No Email',
         onChangePersona: () {
           Navigator.pushReplacement(
             context,
@@ -36,7 +42,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                 await firebaseProvider.signOutUser();
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const PersonaSelectionScreen()),
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
                 );
               }
             : null,
@@ -63,14 +69,22 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: AppNavigationBar(
+        currentIndex: 1,
+        onTap: (index) {
+          // TODO: Implement navigation logic for tenant dashboard
+        },
+      ),
     );
   }
 
   Widget _buildTenantProfileSection(BuildContext context) {
-    // Mock data for tenant profile
+    final firebaseProvider = Provider.of<FirebaseProvider>(context);
+    final userName = firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'Tenant User';
+    
     final tenantProfile = {
-      'name': 'Tenant User',
-      'phone': '+91 98765 43210',
+      'name': userName,
+      'phone': firebaseProvider.currentUser?.phoneNumber ?? '+91 98765 43210',
       'status': 'Active',
       'property': 'Apt 4B, Green Towers',
     };
@@ -136,15 +150,19 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
   }
 
   Widget _buildRentManagementSection(BuildContext context) {
+    final firebaseProvider = Provider.of<FirebaseProvider>(context);
+    final userId = firebaseProvider.userId;
+    
+    if (userId == null || firebaseProvider.db == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    final dataService = DataService(firebaseProvider.db!, userId);
+    
     final upcomingDues = [
       {'date': DateTime.now().add(const Duration(days: 5)), 'amount': 12000.0, 'status': 'Due'}
     ];
     final advanceRent = 24000.0;
-    final last20Payments = [
-      {'date': DateTime.now().subtract(const Duration(days: 20)), 'amount': 12000.0, 'status': 'Paid'},
-      {'date': DateTime.now().subtract(const Duration(days: 50)), 'amount': 12000.0, 'status': 'Paid'},
-      {'date': DateTime.now().subtract(const Duration(days: 80)), 'amount': 11500.0, 'status': 'Paid'},
-    ];
 
     return GridView.count(
       shrinkWrap: true,
@@ -158,7 +176,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           context,
           'Current Rent Due',
           upcomingDues.isNotEmpty ? (upcomingDues[0]['amount'] as num).toLocaleString() : 'No Dues',
-          upcomingDues.isNotEmpty ? 'Due on ${DateFormat.yMMMd('en_IN').format(upcomingDues[0]['date'] as DateTime)}' : '', // Use en_IN locale
+          upcomingDues.isNotEmpty ? 'Due on ${DateFormat.yMMMd('en_IN').format(upcomingDues[0]['date'] as DateTime)}' : '',
           Icons.payments,
           const Color(0xFF2ca24a),
           () {
@@ -188,21 +206,41 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: last20Payments.length,
-                  itemBuilder: (context, index) {
-                    final payment = last20Payments[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text((payment['amount'] as num).toLocaleString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(DateFormat.yMMMd('en_IN').format(payment['date'] as DateTime)), // Use en_IN locale
-                          Text(payment['status'].toString(), style: TextStyle(color: payment['status'] == 'Paid' ? Colors.green : Colors.red)),
-                        ],
-                      ),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: dataService.getPayments(limit: 20),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    }
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text('No payments found'));
+                    }
+                    
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        final payment = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                        final amount = (payment['amount'] as num?)?.toDouble() ?? 0;
+                        final date = payment['date'] != null ? 
+                          (payment['date'] as Timestamp).toDate() : DateTime.now();
+                        final status = payment['status'] ?? 'Unknown';
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(amount.toLocaleString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(DateFormat.yMMMd('en_IN').format(date)),
+                              Text(status, style: TextStyle(color: status == 'Paid' ? Colors.green : Colors.red)),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -260,7 +298,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           Text(
             subtitle,
             style: TextStyle(
-                fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
           ),
           if (onPressed != null) ...[
             const Spacer(),
@@ -307,17 +345,17 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                     children: [
                       _buildNotificationItem(
                         'Rent for July is due on July 5, 2025.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 7, 5, 10, 0)), // Use en_IN locale
+                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 7, 5, 10, 0)),
                         Colors.blue[50]!,
                       ),
                       _buildNotificationItem(
                         'Your KYC documents are pending verification.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 28, 9, 0)), // Use en_IN locale
+                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 28, 9, 0)),
                         Colors.yellow[50]!,
                       ),
                       _buildNotificationItem(
                         'Payment of ₹12,000 received for June rent.',
-                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 5, 11, 30)), // Use en_IN locale
+                        DateFormat.yMMMd('en_IN').add_jm().format(DateTime(2025, 6, 5, 11, 30)),
                         Colors.green[50]!,
                       ),
                     ],

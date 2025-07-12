@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:rentoflow/common/widgets.dart'; // For common widgets
 import 'package:rentoflow/providers/firebase_provider.dart'; // For FirebaseProvider
 import 'package:rentoflow/screens/persona_selection_screen.dart'; // For navigation
+import 'package:rentoflow/screens/auth_screen.dart';
+import 'package:rentoflow/common/app_navigation_bar.dart';
 
 class SuperAdminDashboardScreen extends StatefulWidget {
   const SuperAdminDashboardScreen({super.key});
@@ -29,6 +31,8 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
       appBar: DashboardAppBar(
         title: 'Super Admin Portal',
         userId: userId ?? 'Loading...',
+        userName: firebaseProvider.currentUser?.displayName ?? 'Super Admin',
+        userEmail: firebaseProvider.currentUser?.email ?? 'N/A',
         onChangePersona: () {
           Navigator.pushReplacement(
             context,
@@ -40,7 +44,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                 await firebaseProvider.signOutUser();
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const PersonaSelectionScreen()),
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
                 );
               }
             : null,
@@ -68,6 +72,12 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
             _buildPlatformNotification(context),
           ],
         ),
+      ),
+      bottomNavigationBar: AppNavigationBar(
+        currentIndex: 2,
+        onTap: (index) {
+          // TODO: Implement navigation logic for super admin dashboard
+        },
       ),
     );
   }

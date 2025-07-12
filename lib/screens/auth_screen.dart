@@ -1,11 +1,11 @@
 // lib/screens/auth_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import for UserCredential
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:rentoflow/common/widgets.dart'; // For CustomCard and showSnackBar
-import 'package:rentoflow/providers/firebase_provider.dart'; // For FirebaseProvider
-import 'package:rentoflow/screens/persona_selection_screen.dart'; // For navigation
+import 'package:rentoflow/common/widgets.dart';
+import 'package:rentoflow/providers/firebase_provider.dart';
+import 'package:rentoflow/screens/persona_selection_screen.dart';
 
 enum AuthMode { login, signup }
 enum AuthMethod { email, phone }
@@ -19,7 +19,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   AuthMode _authMode = AuthMode.login;
-  AuthMethod _authMethod = AuthMethod.email; // Default auth method
+  AuthMethod _authMethod = AuthMethod.email;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -41,7 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void _switchAuthMode() {
     setState(() {
       _authMode = _authMode == AuthMode.login ? AuthMode.signup : AuthMode.login;
-      _otpSent = false; // Reset OTP state when switching mode
+      _otpSent = false;
       _emailController.clear();
       _passwordController.clear();
       _phoneController.clear();
@@ -53,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void _switchAuthMethod(AuthMethod method) {
     setState(() {
       _authMethod = method;
-      _otpSent = false; // Reset OTP state when switching method
+      _otpSent = false;
       _emailController.clear();
       _passwordController.clear();
       _phoneController.clear();
@@ -76,16 +76,14 @@ class _AuthScreenState extends State<AuthScreen> {
             _emailController.text,
             _passwordController.text,
           );
-        } else { // Signup
+        } else {
           userCredential = await firebaseProvider.signUpWithEmailPassword(
             _emailController.text,
             _passwordController.text,
           );
         }
-      } else { // Phone Auth
-        // For phone auth, this button only triggers OTP send initially
+      } else {
         if (!_otpSent) {
-          // Ensure phone number starts with +91 if not already present
           String phoneNumber = _phoneController.text.trim();
           if (!phoneNumber.startsWith('+91')) {
             phoneNumber = '+91$phoneNumber';
@@ -95,7 +93,7 @@ class _AuthScreenState extends State<AuthScreen> {
             _otpSent = true;
           });
           showSnackBar(context, 'OTP sent to your phone.');
-        } else { // If OTP already sent, this button verifies OTP
+        } else {
           userCredential = await firebaseProvider.verifyOtp(_otpController.text);
         }
       }
@@ -135,166 +133,169 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: CustomCard(
+            child: Card(
               elevation: 12.0,
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.network(
-                    'https://placehold.co/150x60/227d49/ffffff?text=RentOFlow',
-                    height: 60,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(
-                          width: 150,
-                          height: 60,
-                          color: const Color(0xFF227d49),
-                          alignment: Alignment.center,
-                          child: const Text('RentOFlow',
-                              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                        ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _authMode == AuthMode.login ? 'Login to RentOFlow' : 'Sign Up for RentOFlow',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.network(
+                      'https://placehold.co/150x60/227d49/ffffff?text=RentOFlow',
+                      height: 60,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 150,
+                        height: 60,
+                        color: const Color(0xFF227d49),
+                        alignment: Alignment.center,
+                        child: const Text('RentOFlow',
+                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ToggleButtons(
-                    isSelected: [
-                      _authMethod == AuthMethod.email,
-                      _authMethod == AuthMethod.phone,
-                    ],
-                    onPressed: (index) {
-                      _switchAuthMethod(index == 0 ? AuthMethod.email : AuthMethod.phone);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    selectedColor: Colors.white,
-                    fillColor: Theme.of(context).primaryColor,
-                    color: Colors.grey[700],
-                    borderColor: Colors.grey[300],
-                    selectedBorderColor: Theme.of(context).primaryColor,
-                    children: const [
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-                        child: Row(
-                          children: [
-                            Icon(Icons.email),
-                            SizedBox(width: 8),
-                            Text('Email/Password'),
-                          ],
-                        ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _authMode == AuthMode.login ? 'Login to RentOFlow' : 'Sign Up for RentOFlow',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
                       ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-                        child: Row(
-                          children: [
-                            Icon(Icons.phone),
-                            SizedBox(width: 8),
-                            Text('Phone/OTP'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  if (_authMethod == AuthMethod.email) ...[
-                    TextField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      textCapitalization: TextCapitalization.none,
-                      autocorrect: false,
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                      obscureText: true,
-                    ),
-                  ],
-                  if (_authMethod == AuthMethod.phone) ...[
-                    TextField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        hintText: 'e.g., 9876543210 (10 digits)', // Indian format hint
-                        prefixText: '+91 ', // Pre-fill country code
-                      ),
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10, // Max length for Indian phone number
-                    ),
-                    const SizedBox(height: 16),
-                    if (_otpSent)
-                      TextField(
-                        controller: _otpController,
-                        decoration: const InputDecoration(
-                          labelText: 'OTP',
-                          hintText: 'Enter 6-digit OTP',
-                          prefixIcon: Icon(Icons.sms_outlined),
-                        ),
-                        keyboardType: TextInputType.number,
-                        maxLength: 6, // OTPs are usually 6 digits
-                      ),
-                  ],
-                  const SizedBox(height: 24),
-                  _isLoading
-                      ? const CircularProgressIndicator()
-                      : SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _submitAuthForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 8,
-                              shadowColor: Theme.of(context).primaryColor.withOpacity(0.4),
-                            ),
-                            child: Text(
-                              _authMode == AuthMode.login
-                                  ? (_authMethod == AuthMethod.email ? 'LOGIN' : (_otpSent ? 'VERIFY OTP' : 'SEND OTP'))
-                                  : 'SIGN UP',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
+                    const SizedBox(height: 24),
+                    ToggleButtons(
+                      isSelected: [
+                        _authMethod == AuthMethod.email,
+                        _authMethod == AuthMethod.phone,
+                      ],
+                      onPressed: (index) {
+                        _switchAuthMethod(index == 0 ? AuthMethod.email : AuthMethod.phone);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      selectedColor: Colors.white,
+                      fillColor: Theme.of(context).primaryColor,
+                      color: Colors.grey[700],
+                      borderColor: Colors.grey[300],
+                      selectedBorderColor: Theme.of(context).primaryColor,
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(Icons.email),
+                              SizedBox(width: 8),
+                              Text('Email/Password'),
+                            ],
                           ),
                         ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: _switchAuthMode,
-                    child: Text(
-                      _authMode == AuthMode.login
-                          ? 'Don\'t have an account? Sign Up'
-                          : 'Already have an account? Login',
-                      style: TextStyle(color: Theme.of(context).primaryColor),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(Icons.phone),
+                              SizedBox(width: 8),
+                              Text('Phone/OTP'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (firebaseProvider.errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
+                    const SizedBox(height: 24),
+                    if (_authMethod == AuthMethod.email) ...[
+                      TextField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Address',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textCapitalization: TextCapitalization.none,
+                        autocorrect: false,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        obscureText: true,
+                      ),
+                    ],
+                    if (_authMethod == AuthMethod.phone) ...[
+                      TextField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: 'e.g., 9876543210 (10 digits)',
+                          prefixText: '+91 ',
+                        ),
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                      ),
+                      const SizedBox(height: 16),
+                      if (_otpSent)
+                        TextField(
+                          controller: _otpController,
+                          decoration: const InputDecoration(
+                            labelText: 'OTP',
+                            hintText: 'Enter 6-digit OTP',
+                            prefixIcon: Icon(Icons.sms_outlined),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                        ),
+                    ],
+                    const SizedBox(height: 24),
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _submitAuthForm,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 8,
+                                shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.4),
+                              ),
+                              child: Text(
+                                _authMode == AuthMode.login
+                                    ? (_authMethod == AuthMethod.email ? 'LOGIN' : (_otpSent ? 'VERIFY OTP' : 'SEND OTP'))
+                                    : 'SIGN UP',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _switchAuthMode,
                       child: Text(
-                        firebaseProvider.errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
+                        _authMode == AuthMode.login
+                            ? 'Don\'t have an account? Sign Up'
+                            : 'Already have an account? Login',
+                        style: TextStyle(color: Theme.of(context).primaryColor),
                       ),
                     ),
-                ],
+                    if (firebaseProvider.errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          firebaseProvider.errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

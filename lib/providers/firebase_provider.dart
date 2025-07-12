@@ -38,8 +38,7 @@ class FirebaseProvider extends ChangeNotifier {
   // Handles the entire Firebase setup process using the recommended FlutterFire approach
   Future<void> _initializeFirebase() async {
     try {
-      // **THE FIX IS HERE**: We now use the `firebase_options.dart` file.
-      // This is the standard way and avoids all command-line issues.
+      // Check network connectivity before initializing Firebase
       _firebaseApp = await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -48,85 +47,137 @@ class FirebaseProvider extends ChangeNotifier {
       _db = FirebaseFirestore.instanceFor(app: _firebaseApp!);
       _auth = FirebaseAuth.instanceFor(app: _firebaseApp!);
 
+      // Note: Firestore persistence is enabled by default on mobile platforms
+
       // Set up a listener for authentication state changes
       _auth!.authStateChanges().listen((User? user) {
         _currentUser = user;
         if (user != null) {
-          _userId = user.uid; // Use the Firebase UID for logged-in users
+          _userId = user.uid;
           debugPrint("Auth state changed. User ID: $_userId");
         } else {
-          // When no user is logged in, we can still have a temporary ID if needed,
-          // but the user object will be null.
-          _userId = const Uuid().v4(); 
+          _userId = const Uuid().v4();
           debugPrint("Auth state changed. No user is signed in.");
         }
-        _loadingFirebase = false; // Mark loading as complete
+        _loadingFirebase = false;
+        notifyListeners();
+      }, onError: (error) {
+        debugPrint("Auth state listener error: $error");
+        _errorMessage = "Authentication error: $error";
+        _loadingFirebase = false;
         notifyListeners();
       });
 
-      // **CHANGE**: The automatic anonymous sign-in has been removed.
-      // The app will now wait for the user to explicitly sign in.
-
     } catch (e) {
       debugPrint("Error initializing Firebase: $e");
-      _errorMessage = "Error initializing Firebase: $e";
+      _errorMessage = _getErrorMessage(e);
       _loadingFirebase = false;
       notifyListeners();
     }
   }
 
+  String _getErrorMessage(dynamic error) {
+    if (error.toString().contains('network')) {
+      return 'Network error. Please check your internet connection.';
+    } else if (error.toString().contains('permission')) {
+      return 'Permission denied. Please check your Firebase configuration.';
+    }
+    return 'Error initializing Firebase: $error';
+  }
+
   // --- Authentication Methods ---
 
   Future<UserCredential?> signUpWithEmailPassword(String email, String password) async {
+    if (!_validateEmail(email)) {
+      _errorMessage = 'Please enter a valid email address.';
+      notifyListeners();
+      return null;
+    }
+    if (!_validatePassword(password)) {
+      _errorMessage = 'Password must be at least 6 characters long.';
+      notifyListeners();
+      return null;
+    }
+    
     try {
       _errorMessage = null;
       notifyListeners();
       UserCredential userCredential = await _auth!.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
-      _justSignedUp = true; // New: Set flag to true on successful signup
+      _justSignedUp = true;
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      _errorMessage = e.message;
+      _errorMessage = _getAuthErrorMessage(e);
       notifyListeners();
       return null;
     } catch (e) {
-      _errorMessage = 'An unknown error occurred: $e';
+      _errorMessage = 'Network error. Please try again.';
       notifyListeners();
       return null;
     }
   }
 
   Future<UserCredential?> signInWithEmailPassword(String email, String password) async {
+    if (!_validateEmail(email)) {
+      _errorMessage = 'Please enter a valid email address.';
+      notifyListeners();
+      return null;
+    }
+    
     try {
       _errorMessage = null;
       notifyListeners();
       UserCredential userCredential = await _auth!.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
-      _justSignedUp = false; // New: Set flag to false on successful login
+      _justSignedUp = false;
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      // New: Better error handling for specific cases
-      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        _errorMessage = 'Invalid email or password. Please try again.';
-      } else {
-        _errorMessage = e.message;
-      }
+      _errorMessage = _getAuthErrorMessage(e);
       notifyListeners();
       return null;
     } catch (e) {
-      _errorMessage = 'An unknown error occurred: $e';
+      _errorMessage = 'Network error. Please try again.';
       notifyListeners();
       return null;
+    }
+  }
+
+  bool _validateEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _validatePassword(String password) {
+    return password.length >= 6;
+  }
+
+  String _getAuthErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Invalid email or password. Please try again.';
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'weak-password':
+        return 'Password is too weak. Please choose a stronger password.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection.';
+      default:
+        return e.message ?? 'Authentication failed. Please try again.';
     }
   }
 

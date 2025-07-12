@@ -1,8 +1,5 @@
 // lib/common/widgets.dart
 import 'package:flutter/material.dart';
-// Removed unused imports:
-// import 'package:provider/provider.dart';
-// import 'package:rentoflow/providers/firebase_provider.dart';
 
 // --- Global Message Box (Snackbar equivalent) ---
 void showSnackBar(BuildContext context, String message, {bool isError = false}) {
@@ -29,19 +26,25 @@ void showSnackBar(BuildContext context, String message, {bool isError = false}) 
 class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String userId;
+  final String userName;
+  final String userEmail;
   final VoidCallback onChangePersona;
   final VoidCallback? onSignOut;
+  final VoidCallback? onProfile;
 
   const DashboardAppBar({
     required this.title,
     required this.userId,
+    required this.userName,
+    required this.userEmail,
     required this.onChangePersona,
     this.onSignOut,
+    this.onProfile,
     super.key,
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 16.0); // Add extra padding for rounded bottom
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 16.0);
 
   @override
   Widget build(BuildContext context) {
@@ -97,52 +100,79 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-        Tooltip(
-          message: 'Your User ID: $userId',
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Chip(
-              label: Text(
-                'ID: ${userId.substring(0, 4)}...',
-                style: const TextStyle(fontSize: 10),
-              ),
-              backgroundColor: Colors.grey[200],
-            ),
-          ),
-        ),
-        PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'change_persona') {
-              // This navigation needs to be handled by the calling screen
-              // as PersonaSelectionScreen is not directly imported here.
-              onChangePersona();
-            } else if (value == 'sign_out' && onSignOut != null) {
-              onSignOut!();
-            }
-          },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(
-              value: 'change_persona',
-              child: Row(
-                children: const [
-                  Icon(Icons.arrow_back, size: 20),
-                  SizedBox(width: 8),
-                  Text('Change Persona'),
-                ],
-              ),
-            ),
-            if (onSignOut != null)
-              PopupMenuItem<String>(
-                value: 'sign_out',
-                child: Row(
-                  children: const [
-                    Icon(Icons.lock_open, size: 20),
-                    SizedBox(width: 8),
-                    Text('Sign Out'),
-                  ],
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              icon: CircleAvatar(
+                radius: 16,
+                child: Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-          ],
+              items: [
+                DropdownMenuItem<String>(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, size: 20),
+                      const SizedBox(width: 8),
+                      const Text('My Profile'),
+                    ],
+                  ),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.logout, size: 20),
+                      const SizedBox(width: 8),
+                      const Text('Logout'),
+                    ],
+                  ),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == 'profile' && onProfile != null) {
+                  onProfile!();
+                } else if (value == 'logout' && onSignOut != null) {
+                  onSignOut!();
+                }
+              },
+              selectedItemBuilder: (context) {
+                return [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(userName, style: const TextStyle(fontSize: 12)),
+                          if (userEmail.isNotEmpty)
+                            Text(userEmail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  CircleAvatar(
+                    radius: 16,
+                    child: Text(
+                      userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ];
+              },
+            ),
+          ),
         ),
       ],
       shape: const RoundedRectangleBorder(
@@ -186,149 +216,35 @@ class CustomCard extends StatelessWidget {
 }
 
 // --- Carousel Widget ---
-class Carousel extends StatefulWidget {
+class Carousel extends StatelessWidget {
   final List<Map<String, String>> images;
-  final Duration interval;
-
-  const Carousel({
-    required this.images,
-    this.interval = const Duration(seconds: 3),
-    super.key,
-  });
-
-  @override
-  State<Carousel> createState() => _CarouselState();
-}
-
-class _CarouselState extends State<Carousel> {
-  late PageController _pageController;
-  int _currentPage = 0;
-  // Removed: late final Future<void> _initFuture; // This field was unused
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-    _startAutoScroll();
-  }
-
-  void _startAutoScroll() {
-    Future.delayed(widget.interval, () {
-      if (!mounted) return;
-      if (_pageController.hasClients) {
-        _currentPage = (_currentPage + 1) % widget.images.length;
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeIn,
-        );
-      }
-      _startAutoScroll(); // Loop back
-    });
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  const Carousel({super.key, required this.images});
 
   @override
   Widget build(BuildContext context) {
-    if (widget.images.isEmpty) {
-      return const Center(child: Text("No images to display."));
-    }
-
-    return Stack(
-      children: [
-        PageView.builder(
-          controller: _pageController,
-          itemCount: widget.images.length,
-          onPageChanged: (index) {
-            setState(() {
-              _currentPage = index;
-            });
-          },
-          itemBuilder: (context, index) {
-            return GestureDetector(
+    return SizedBox(
+      height: 160, // Set a fixed height for the carousel
+      child: PageView(
+        children: images.map((img) {
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
               onTap: () {
-                // Handle link tap if needed
-                if (widget.images[index]['link'] != null) {
-                  showSnackBar(context, "Navigating to: ${widget.images[index]['link']}");
-                  // You would typically use url_launcher package here
-                  // Uri.parse(widget.images[index]['link']!).launchUrl();
-                }
+                // Handle link navigation if needed
               },
-              child: Image.network(
-                widget.images[index]['src']!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey[300],
-                  child: Center(
-                    child: Text(
-                      'Image ${index + 1}',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  img['src'] ?? '',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 160,
                 ),
               ),
-            );
-          },
-        ),
-        if (widget.images.length > 1)
-          Positioned(
-            left: 8,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: IconButton(
-                icon: const Icon(Icons.chevron_left, color: Colors.white, size: 30),
-                onPressed: () {
-                  _pageController.previousPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeIn,
-                  );
-                },
-              ),
             ),
-          ),
-        if (widget.images.length > 1)
-          Positioned(
-            right: 8,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: IconButton(
-                icon: const Icon(Icons.chevron_right, color: Colors.white, size: 30),
-                onPressed: () {
-                  _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeIn,
-                  );
-                },
-              ),
-            ),
-          ),
-        Positioned(
-          bottom: 8,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(widget.images.length, (index) {
-              return Container(
-                width: 8.0,
-                height: 8.0,
-                margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5),
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
+          );
+        }).toList(),
+      ),
     );
   }
 }
