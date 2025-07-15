@@ -166,10 +166,10 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: MediaQuery.of(context).size.width > 700 ? 3 : 1,
-      crossAxisSpacing: 16.0,
-      mainAxisSpacing: 16.0,
-      childAspectRatio: 1.2,
+      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
+      crossAxisSpacing: 12.0,
+      mainAxisSpacing: 12.0,
+      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.2 : 1.0,
       children: [
         _buildRentManagementCard(
           context,
@@ -321,6 +321,105 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
   }
 
   Widget _buildNotificationsAndSupportSection(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    
+    if (isSmallScreen) {
+      return Column(
+        children: [
+          _buildNotificationsCard(context),
+          const SizedBox(height: 16),
+          _buildSupportCard(context),
+        ],
+      );
+    }
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildNotificationsCard(context),
+        const SizedBox(width: 16),
+        _buildSupportCard(context),
+      ],
+    );
+  }
+
+  Widget _buildNotificationsCard(BuildContext context) {
+    return Expanded(
+      child: CustomCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notifications',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 180,
+              child: const Center(
+                child: Text(
+                  'No notifications yet.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportCard(BuildContext context) {
+    return Expanded(
+      child: CustomCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Support & Assistance',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Need help or have a question? Contact your property owner directly.',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  showSnackBar(context, "Contacting owner (simulated)...");
+                },
+                icon: const Icon(Icons.send, size: 20),
+                label: const Text('Contact Property Owner'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD54F),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'For rental disputes or payment issues, reach out to support.',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOldNotificationsAndSupportSection(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

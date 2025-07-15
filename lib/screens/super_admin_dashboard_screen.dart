@@ -87,9 +87,10 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: MediaQuery.of(context).size.width > 700 ? 4 : 2,
-      crossAxisSpacing: 16.0,
-      mainAxisSpacing: 16.0,
+      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
+      crossAxisSpacing: 12.0,
+      mainAxisSpacing: 12.0,
+      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.5 : 1.2,
       children: [
         _buildMetricCard(context, 'Total Properties', '$totalProperties', Icons.apartment, Colors.blue[600]!),
         _buildMetricCard(context, 'Total Tenants', '$totalTenants', Icons.group, Colors.purple[600]!),

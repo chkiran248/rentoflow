@@ -53,14 +53,18 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           Image.asset(
             'assets/RentOFlow.png',
-            height: 30,
+            height: MediaQuery.of(context).size.width > 600 ? 30 : 24,
             fit: BoxFit.contain,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+              style: TextStyle(
+                fontSize: MediaQuery.of(context).size.width > 600 ? 18 : 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700]
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),

@@ -27,9 +27,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   final TextEditingController _rentPriceController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   String _selectedPropertyType = 'Flat';
+  int _selectedDueDate = 1;
   final List<String> _propertyTypes = [
     'Flat', 'Shared', 'Land', 'Hostel/PG', 'Co-Living', 'Studio'
   ];
+  final List<int> _dueDates = List.generate(28, (index) => index + 1);
 
   @override
   void dispose() {
@@ -64,6 +66,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       'address': _addressController.text,
       'type': _selectedPropertyType,
       'rentPrice': double.tryParse(_rentPriceController.text) ?? 0.0,
+      'rentDueDate': _selectedDueDate,
       'status': 'Vacant',
       'description': _descriptionController.text,
       'photos': ['https://placehold.co/600x400/2ca24a/ffffff?text=Property'],
@@ -156,21 +159,29 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    
     return Wrap(
-      spacing: 12.0,
-      runSpacing: 12.0,
+      spacing: 8.0,
+      runSpacing: 8.0,
       children: [
-        ElevatedButton.icon(
-          onPressed: () {
-            _showAddPropertyModal(context);
-          },
-          icon: const Icon(Icons.add_home_work_outlined),
-          label: const Text('Add New Property'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF81C784),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        SizedBox(
+          width: isSmallScreen ? double.infinity : null,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              _showAddPropertyModal(context);
+            },
+            icon: const Icon(Icons.add_home_work_outlined),
+            label: const Text('Add New Property'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF81C784),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 16 : 20,
+                vertical: 12
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
         ),
       ],
@@ -203,10 +214,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: MediaQuery.of(context).size.width > 700 ? 3 : 1,
-          crossAxisSpacing: 16.0,
-          mainAxisSpacing: 16.0,
-          childAspectRatio: 1.8,
+          crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
+          crossAxisSpacing: 12.0,
+          mainAxisSpacing: 12.0,
+          childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.5 : 1.2,
           children: [
             _buildFinancialCard(
               context,
@@ -278,10 +289,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                        fontSize: 16,
+                    style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                 ),
               ],
@@ -289,10 +302,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(
-                  fontSize: 32,
+              style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width > 600 ? 28 : 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white),
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
@@ -425,6 +439,24 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: _selectedDueDate,
+                      decoration: const InputDecoration(labelText: 'Rent Due Date (Day of Month)'),
+                      items: _dueDates.map((int day) {
+                        return DropdownMenuItem<int>(
+                          value: day,
+                          child: Text('$day${_getOrdinalSuffix(day)} of every month'),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        if (newValue != null) {
+                          setModalState(() {
+                            _selectedDueDate = newValue;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(labelText: 'Description (Optional)'),
@@ -442,6 +474,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     _rentPriceController.clear();
                     _descriptionController.clear();
                     _selectedPropertyType = 'Flat';
+                    _selectedDueDate = 1;
                   },
                   child: const Text('Cancel'),
                 ),
@@ -457,5 +490,15 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         );
       },
     );
+  }
+
+  String _getOrdinalSuffix(int day) {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
   }
 }
