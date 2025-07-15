@@ -7,6 +7,8 @@ import 'package:rentoflow/providers/firebase_provider.dart'; // For FirebaseProv
 import 'package:rentoflow/screens/owner_dashboard_screen.dart';
 import 'package:rentoflow/screens/tenant_dashboard_screen.dart';
 import 'package:rentoflow/screens/super_admin_dashboard_screen.dart';
+import 'package:rentoflow/screens/auth_screen.dart';
+import 'package:rentoflow/screens/profile_view.dart';
 
 class PersonaSelectionScreen extends StatefulWidget {
   const PersonaSelectionScreen({super.key});
@@ -39,6 +41,32 @@ class _PersonaSelectionScreenState extends State<PersonaSelectionScreen> {
         : const SizedBox.shrink();
 
     return Scaffold(
+      appBar: DashboardAppBar(
+        title: 'Select Your Role',
+        userId: firebaseProvider.userId ?? 'Loading...',
+        userName: firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'User',
+        userEmail: firebaseProvider.currentUser?.email ?? '',
+        onChangePersona: () {},
+        onSignOut: firebaseProvider.currentUser != null && !firebaseProvider.currentUser!.isAnonymous
+            ? () async {
+                await firebaseProvider.signOutUser();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
+                );
+              }
+            : null,
+        onProfile: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ProfileView(
+                userName: firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'User',
+                userEmail: firebaseProvider.currentUser?.email ?? '',
+              ),
+            ),
+          );
+        },
+      ),
       body: Stack(
         children: [
           Container(
@@ -61,19 +89,10 @@ class _PersonaSelectionScreenState extends State<PersonaSelectionScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.network(
-                        'https://placehold.co/150x60/227d49/ffffff?text=RentOFlow',
+                      Image.asset(
+                        'assets/RentOFlow.png',
                         height: 60,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                              width: 150,
-                              height: 60,
-                              color: const Color(0xFF227d49),
-                              alignment: Alignment.center,
-                              child: const Text('RentOFlow',
-                                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                            ),
                       ),
                       const SizedBox(height: 24),
                       Text(

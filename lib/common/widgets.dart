@@ -51,19 +51,10 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Row(
         children: [
-          Image.network(
-            'https://placehold.co/80x30/227d49/ffffff?text=RentOFlow',
+          Image.asset(
+            'assets/RentOFlow.png',
             height: 30,
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) =>
-                Container(
-                  width: 80,
-                  height: 30,
-                  color: const Color(0xFF227d49),
-                  alignment: Alignment.center,
-                  child: const Text('RentOFlow',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
           ),
           const SizedBox(width: 8),
           Expanded(

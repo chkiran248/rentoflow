@@ -16,11 +16,7 @@ class SuperAdminDashboardScreen extends StatefulWidget {
 }
 
 class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
-  final List<Map<String, dynamic>> _mockOwnerUsers = [
-    {'id': 'owner_mock_1', 'name': 'Alice Property', 'type': 'Pro', 'status': 'Active'},
-    {'id': 'owner_mock_2', 'name': 'Bob Basic', 'type': 'Basic', 'status': 'Active'},
-    {'id': 'owner_mock_3', 'name': 'Charlie Deactivated', 'type': 'Pro', 'status': 'Inactive'},
-  ];
+  final List<Map<String, dynamic>> _mockOwnerUsers = [];
 
   @override
   Widget build(BuildContext context) {
@@ -83,10 +79,10 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   }
 
   Widget _buildSystemMetrics(BuildContext context) {
-    final totalProperties = 150;
-    final totalTenants = 500;
-    final activeUsers = 650;
-    final flaggedIssues = 5;
+    final totalProperties = 0;
+    final totalTenants = 0;
+    final activeUsers = 0;
+    final flaggedIssues = 0;
 
     return GridView.count(
       shrinkWrap: true,
@@ -207,9 +203,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   }
 
   Widget _buildPropertyValidation(BuildContext context) {
-    final pendingProperties = [
-      {'id': 'prop_pending_1', 'name': 'Riverside Villa', 'address': '123 Main St', 'ownerId': 'owner_mock_4'},
-    ];
+    final pendingProperties = <Map<String, String>>[];
 
     return CustomCard(
       child: Column(

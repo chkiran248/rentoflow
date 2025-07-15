@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rentoflow/common/widgets.dart';
 import 'package:rentoflow/providers/firebase_provider.dart';
 import 'package:rentoflow/screens/persona_selection_screen.dart';
+import 'package:rentoflow/screens/owner_dashboard_screen.dart';
 
 enum AuthMode { login, signup }
 enum AuthMethod { email, phone }
@@ -101,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (userCredential != null && mounted) {
         showSnackBar(context, '${_authMode == AuthMode.login ? 'Logged in' : 'Signed up'} successfully!');
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const PersonaSelectionScreen()),
+          MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
         );
       } else if (firebaseProvider.errorMessage != null) {
         showSnackBar(context, firebaseProvider.errorMessage!, isError: true);
@@ -143,18 +144,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.network(
-                      'https://placehold.co/150x60/227d49/ffffff?text=RentOFlow',
+                    Image.asset(
+                      'assets/RentOFlow.png',
                       height: 60,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 150,
-                        height: 60,
-                        color: const Color(0xFF227d49),
-                        alignment: Alignment.center,
-                        child: const Text('RentOFlow',
-                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                      ),
                     ),
                     const SizedBox(height: 24),
                     Text(
