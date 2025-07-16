@@ -87,7 +87,16 @@ class FirebaseProvider extends ChangeNotifier {
 
   // --- Authentication Methods ---
 
-  Future<UserCredential?> signUpWithEmailPassword(String email, String password) async {
+  Future<UserCredential?> signUpWithEmailPassword(String email, String password, {String? name, String? phone}) async {
+    // Check for duplicate email and phone
+    if (phone != null && phone.isNotEmpty) {
+      final phoneExists = await _checkPhoneExists(phone);
+      if (phoneExists) {
+        _errorMessage = 'Phone number already registered. Please use a different number.';
+        notifyListeners();
+        return null;
+      }
+    }
     if (!_validateEmail(email)) {
       _errorMessage = 'Please enter a valid email address.';
       notifyListeners();
@@ -109,6 +118,17 @@ class FirebaseProvider extends ChangeNotifier {
       _currentUser = userCredential.user;
       _userId = _currentUser!.uid;
       _justSignedUp = true;
+      
+      // Create user profile with additional info
+      if (name != null || phone != null) {
+        await _createUserProfile(name, phone);
+        
+        // Update display name
+        if (name != null && name.isNotEmpty) {
+          await _currentUser!.updateDisplayName(name);
+        }
+      }
+      
       notifyListeners();
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -163,6 +183,7 @@ class FirebaseProvider extends ChangeNotifier {
   String _getAuthErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
+        return 'User does not exist. Please register first or check your email address.';
       case 'wrong-password':
       case 'invalid-credential':
         return 'Invalid email or password. Please try again.';
@@ -238,6 +259,35 @@ class FirebaseProvider extends ChangeNotifier {
       _userId = const Uuid().v4(); // Generate a new anonymous ID after sign out
       notifyListeners();
       debugPrint("User signed out.");
+    }
+  }
+
+  // Check if phone number already exists
+  Future<bool> _checkPhoneExists(String phone) async {
+    try {
+      final querySnapshot = await _db!.collectionGroup('users')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking phone: $e');
+      return false;
+    }
+  }
+
+  // Create user profile in Firestore
+  Future<void> _createUserProfile(String? name, String? phone) async {
+    try {
+      const appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
+      await _db!.collection('artifacts/$appId/users/$_userId/profile').doc('info').set({
+        'name': name ?? '',
+        'phone': phone ?? '',
+        'email': _currentUser?.email ?? '',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Error creating user profile: $e');
     }
   }
 

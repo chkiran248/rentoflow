@@ -12,6 +12,7 @@ import 'package:rentoflow/screens/persona_selection_screen.dart';
 import 'package:rentoflow/screens/auth_screen.dart';
 import 'package:rentoflow/common/app_navigation_bar.dart';
 import 'package:rentoflow/screens/profile_view.dart' as profile_screen;
+import 'package:rentoflow/services/reminder_service.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -26,12 +27,15 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _rentPriceController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _tenantNameController = TextEditingController();
+  final TextEditingController _tenantPhoneController = TextEditingController();
+  final TextEditingController _tenantEmailController = TextEditingController();
   String _selectedPropertyType = 'Flat';
-  int _selectedDueDate = 1;
+  String? _selectedPropertyId;
+  DateTime? _selectedDueDate;
   final List<String> _propertyTypes = [
     'Flat', 'Shared', 'Land', 'Hostel/PG', 'Co-Living', 'Studio'
   ];
-  final List<int> _dueDates = List.generate(28, (index) => index + 1);
 
   @override
   void dispose() {
@@ -39,6 +43,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     _addressController.dispose();
     _rentPriceController.dispose();
     _descriptionController.dispose();
+    _tenantNameController.dispose();
+    _tenantPhoneController.dispose();
+    _tenantEmailController.dispose();
     super.dispose();
   }
 
@@ -66,7 +73,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       'address': _addressController.text,
       'type': _selectedPropertyType,
       'rentPrice': double.tryParse(_rentPriceController.text) ?? 0.0,
-      'rentDueDate': _selectedDueDate,
+      'rentDueDate': _selectedDueDate?.day ?? 1,
       'status': 'Vacant',
       'description': _descriptionController.text,
       'photos': ['https://placehold.co/600x400/2ca24a/ffffff?text=Property'],
@@ -77,6 +84,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
     try {
       await db.collection('artifacts/$appId/users/$userId/properties').add(newProperty);
+      
+      // Trigger reminder check for new property
+      final reminderService = ReminderService(db, userId);
+      await reminderService.checkAndCreateReminders();
+      
       showSnackBar(context, "Property added successfully!");
       Navigator.of(context).pop();
       _propertyNameController.clear();
@@ -153,7 +165,26 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             ),
       bottomNavigationBar: AppNavigationBar(
         currentIndex: 0,
-        onTap: (index) {},
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // Already on home
+              break;
+            case 1:
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => profile_screen.ProfileView(
+                    userName: firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'Owner',
+                    userEmail: firebaseProvider.currentUser?.email ?? '',
+                  ),
+                ),
+              );
+              break;
+            case 2:
+              showSnackBar(context, "Settings feature coming soon!");
+              break;
+          }
+        },
       ),
     );
   }
@@ -175,6 +206,25 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             label: const Text('Add New Property'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF81C784),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 16 : 20,
+                vertical: 12
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: isSmallScreen ? double.infinity : null,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              _showAddTenantModal(context);
+            },
+            icon: const Icon(Icons.person_add_outlined),
+            label: const Text('Add New Tenant'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD54F),
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
                 horizontal: isSmallScreen ? 16 : 20,
@@ -370,11 +420,20 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         itemCount: snapshot.data!.docs.length,
                         itemBuilder: (context, index) {
                           final property = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                          final propertyId = snapshot.data!.docs[index].id;
                           return Card(
                             child: ListTile(
                               title: Text(property['name'] ?? 'N/A'),
                               subtitle: Text(property['address'] ?? 'N/A'),
-                              trailing: Text('₹${property['rentPrice']?.toString() ?? '0'}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('₹${property['rentPrice']?.toString() ?? '0'}'),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.edit, size: 16, color: Colors.grey[600]),
+                                ],
+                              ),
+                              onTap: () => _showEditPropertyModal(context, propertyId, property),
                             ),
                           );
                         },
@@ -439,22 +498,43 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      value: _selectedDueDate,
-                      decoration: const InputDecoration(labelText: 'Rent Due Date (Day of Month)'),
-                      items: _dueDates.map((int day) {
-                        return DropdownMenuItem<int>(
-                          value: day,
-                          child: Text('$day${_getOrdinalSuffix(day)} of every month'),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDueDate ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          helpText: 'Select Rent Due Date',
                         );
-                      }).toList(),
-                      onChanged: (int? newValue) {
-                        if (newValue != null) {
+                        if (picked != null) {
                           setModalState(() {
-                            _selectedDueDate = newValue;
+                            _selectedDueDate = picked;
                           });
                         }
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: Colors.grey),
+                            const SizedBox(width: 12),
+                            Text(
+                              _selectedDueDate != null
+                                  ? 'Due Date: ${_selectedDueDate!.day}${_getOrdinalSuffix(_selectedDueDate!.day)} of every month'
+                                  : 'Select Rent Due Date',
+                              style: TextStyle(
+                                color: _selectedDueDate != null ? Colors.black87 : Colors.grey[600],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -474,7 +554,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     _rentPriceController.clear();
                     _descriptionController.clear();
                     _selectedPropertyType = 'Flat';
-                    _selectedDueDate = 1;
+                    _selectedDueDate = null;
                   },
                   child: const Text('Cancel'),
                 ),
@@ -483,6 +563,342 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     _addProperty(dialogContext);
                   },
                   child: const Text('Add Property'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditPropertyModal(BuildContext context, String propertyId, Map<String, dynamic> property) {
+    _propertyNameController.text = property['name'] ?? '';
+    _addressController.text = property['address'] ?? '';
+    _rentPriceController.text = property['rentPrice']?.toString() ?? '';
+    _descriptionController.text = property['description'] ?? '';
+    _selectedPropertyType = property['type'] ?? 'Flat';
+    _selectedDueDate = property['rentDueDate'] != null ? DateTime(2024, 1, property['rentDueDate']) : null;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+              title: const Text('Edit Property'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _propertyNameController,
+                      decoration: const InputDecoration(labelText: 'Property Name'),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _addressController,
+                      decoration: const InputDecoration(labelText: 'Address'),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedPropertyType,
+                      decoration: const InputDecoration(labelText: 'Property Type'),
+                      items: _propertyTypes.map((String type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setModalState(() {
+                            _selectedPropertyType = newValue;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _rentPriceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Rent Price (per month)',
+                        hintText: 'e.g., 15000',
+                        prefixText: '₹ ',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDueDate ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          helpText: 'Select Rent Due Date',
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            _selectedDueDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: Colors.grey),
+                            const SizedBox(width: 12),
+                            Text(
+                              _selectedDueDate != null
+                                  ? 'Due Date: ${_selectedDueDate!.day}${_getOrdinalSuffix(_selectedDueDate!.day)} of every month'
+                                  : 'Select Rent Due Date',
+                              style: TextStyle(
+                                color: _selectedDueDate != null ? Colors.black87 : Colors.grey[600],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(labelText: 'Description (Optional)'),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    _clearForm();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _updateProperty(dialogContext, propertyId);
+                  },
+                  child: const Text('Update Property'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _updateProperty(BuildContext context, String propertyId) async {
+    final firebaseProvider = Provider.of<FirebaseProvider>(context, listen: false);
+    final db = firebaseProvider.db;
+    final userId = firebaseProvider.userId;
+    const appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
+
+    if (db == null || userId == null) {
+      showSnackBar(context, "Firebase not initialized or user not logged in.", isError: true);
+      return;
+    }
+
+    if (_propertyNameController.text.isEmpty ||
+        _addressController.text.isEmpty ||
+        _rentPriceController.text.isEmpty) {
+      showSnackBar(context, "Please fill in all required fields.", isError: true);
+      return;
+    }
+
+    final updatedProperty = {
+      'name': _propertyNameController.text,
+      'address': _addressController.text,
+      'type': _selectedPropertyType,
+      'rentPrice': double.tryParse(_rentPriceController.text) ?? 0.0,
+      'rentDueDate': _selectedDueDate?.day ?? 1,
+      'description': _descriptionController.text,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await db.collection('artifacts/$appId/users/$userId/properties').doc(propertyId).update(updatedProperty);
+      
+      // Trigger reminder check for updated property
+      final reminderService = ReminderService(db, userId);
+      await reminderService.checkAndCreateReminders();
+      
+      showSnackBar(context, "Property updated successfully!");
+      Navigator.of(context).pop();
+      _clearForm();
+    } catch (e) {
+      debugPrint("Error updating property: $e");
+      showSnackBar(context, "Failed to update property: $e", isError: true);
+    }
+  }
+
+  void _clearForm() {
+    _propertyNameController.clear();
+    _addressController.clear();
+    _rentPriceController.clear();
+    _descriptionController.clear();
+    _selectedPropertyType = 'Flat';
+    _selectedDueDate = null;
+  }
+
+  void _addTenant(BuildContext context) async {
+    final firebaseProvider = Provider.of<FirebaseProvider>(context, listen: false);
+    final db = firebaseProvider.db;
+    final userId = firebaseProvider.userId;
+    const appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
+
+    if (db == null || userId == null) {
+      showSnackBar(context, "Firebase not initialized or user not logged in.", isError: true);
+      return;
+    }
+
+    if (_tenantNameController.text.isEmpty ||
+        _tenantPhoneController.text.isEmpty ||
+        _selectedPropertyId == null) {
+      showSnackBar(context, "Please fill in all required fields.", isError: true);
+      return;
+    }
+
+    final newTenant = {
+      'id': _uuid.v4(),
+      'name': _tenantNameController.text,
+      'phone': _tenantPhoneController.text,
+      'email': _tenantEmailController.text,
+      'propertyId': _selectedPropertyId,
+      'status': 'Active',
+      'checkInDate': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await db.collection('artifacts/$appId/users/$userId/tenants').add(newTenant);
+      
+      // Update property status to Occupied
+      await db.collection('artifacts/$appId/users/$userId/properties').doc(_selectedPropertyId!).update({
+        'status': 'Occupied',
+        'tenantId': newTenant['id'],
+      });
+      
+      showSnackBar(context, "Tenant added successfully!");
+      Navigator.of(context).pop();
+      _tenantNameController.clear();
+      _tenantPhoneController.clear();
+      _tenantEmailController.clear();
+      _selectedPropertyId = null;
+    } catch (e) {
+      debugPrint("Error adding tenant: $e");
+      showSnackBar(context, "Failed to add tenant: $e", isError: true);
+    }
+  }
+
+  void _showAddTenantModal(BuildContext context) {
+    final firebaseProvider = Provider.of<FirebaseProvider>(context, listen: false);
+    final db = firebaseProvider.db;
+    final userId = firebaseProvider.userId;
+    const appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+              title: const Text('Add New Tenant'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _tenantNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tenant Name',
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _tenantPhoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        prefixText: '+91 ',
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      maxLength: 10,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _tenantEmailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email (Optional)',
+                        prefixIcon: Icon(Icons.email),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 16),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: db?.collection('artifacts/$appId/users/$userId/properties')
+                          .where('status', isEqualTo: 'Vacant')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Text('No vacant properties available');
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          value: _selectedPropertyId,
+                          decoration: const InputDecoration(
+                            labelText: 'Select Property',
+                            prefixIcon: Icon(Icons.home),
+                          ),
+                          items: snapshot.data!.docs.map((doc) {
+                            final property = doc.data() as Map<String, dynamic>;
+                            return DropdownMenuItem<String>(
+                              value: doc.id,
+                              child: Text(property['name'] ?? 'N/A'),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setModalState(() {
+                              _selectedPropertyId = newValue;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    _tenantNameController.clear();
+                    _tenantPhoneController.clear();
+                    _tenantEmailController.clear();
+                    _selectedPropertyId = null;
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _addTenant(dialogContext);
+                  },
+                  child: const Text('Add Tenant'),
                 ),
               ],
             );

@@ -13,7 +13,6 @@ class ReminderService {
   Future<void> checkAndCreateReminders() async {
     try {
       final now = DateTime.now();
-      final threeDaysFromNow = now.add(const Duration(days: 3));
       
       // Get all properties with tenants
       final propertiesSnapshot = await _db
@@ -23,13 +22,13 @@ class ReminderService {
 
       for (var propertyDoc in propertiesSnapshot.docs) {
         final propertyData = propertyDoc.data();
-        final rentDueDate = propertyData['rentDueDate'] as int? ?? 1;
+        final rentDueDay = propertyData['rentDueDate'] as int? ?? 1;
         
-        // Calculate next due date
-        final nextDueDate = _getNextDueDate(rentDueDate);
+        // Calculate next due date based on day of month
+        final nextDueDate = _getNextDueDateFromDay(rentDueDay);
         
-        // Check if due date is within 3 days
-        if (_isWithinThreeDays(nextDueDate, threeDaysFromNow)) {
+        // Check if we should send reminder (3 days before due date)
+        if (_shouldSendReminder(nextDueDate, now)) {
           await _createReminderNotification(
             propertyDoc.id,
             propertyData['name'] ?? 'Property',
@@ -43,21 +42,29 @@ class ReminderService {
     }
   }
 
-  DateTime _getNextDueDate(int dueDay) {
+  DateTime _getNextDueDateFromDay(int dueDay) {
     final now = DateTime.now();
     var nextDue = DateTime(now.year, now.month, dueDay);
     
     // If due date has passed this month, move to next month
-    if (nextDue.isBefore(now)) {
-      nextDue = DateTime(now.year, now.month + 1, dueDay);
+    if (nextDue.isBefore(now) || nextDue.isAtSameMomentAs(now)) {
+      if (now.month == 12) {
+        nextDue = DateTime(now.year + 1, 1, dueDay);
+      } else {
+        nextDue = DateTime(now.year, now.month + 1, dueDay);
+      }
     }
     
     return nextDue;
   }
 
-  bool _isWithinThreeDays(DateTime dueDate, DateTime checkDate) {
-    final difference = dueDate.difference(checkDate).inDays;
-    return difference >= 0 && difference <= 3;
+  bool _shouldSendReminder(DateTime dueDate, DateTime now) {
+    final reminderDate = dueDate.subtract(const Duration(days: 3));
+    final today = DateTime(now.year, now.month, now.day);
+    final reminderDay = DateTime(reminderDate.year, reminderDate.month, reminderDate.day);
+    
+    // Send reminder if today is exactly 3 days before due date
+    return today.isAtSameMomentAs(reminderDay);
   }
 
   Future<void> _createReminderNotification(

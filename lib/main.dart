@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:rentoflow/providers/firebase_provider.dart';
-import 'package:rentoflow/screens/persona_selection_screen.dart';
 import 'package:rentoflow/screens/auth_screen.dart';
 import 'package:rentoflow/screens/owner_dashboard_screen.dart';
 

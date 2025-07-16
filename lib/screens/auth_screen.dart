@@ -26,6 +26,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _signupPhoneController = TextEditingController();
 
   bool _isLoading = false;
   bool _otpSent = false;
@@ -36,6 +38,8 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _nameController.dispose();
+    _signupPhoneController.dispose();
     super.dispose();
   }
 
@@ -81,6 +85,8 @@ class _AuthScreenState extends State<AuthScreen> {
           userCredential = await firebaseProvider.signUpWithEmailPassword(
             _emailController.text,
             _passwordController.text,
+            name: _nameController.text.trim(),
+            phone: _signupPhoneController.text.trim(),
           );
         }
       } else {
@@ -107,8 +113,6 @@ class _AuthScreenState extends State<AuthScreen> {
       } else if (firebaseProvider.errorMessage != null) {
         showSnackBar(context, firebaseProvider.errorMessage!, isError: true);
       }
-    } catch (e) {
-      showSnackBar(context, 'An unexpected error occurred: $e', isError: true);
     } finally {
       setState(() {
         _isLoading = false;
@@ -199,6 +203,29 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
                     if (_authMethod == AuthMethod.email) ...[
+                      if (_authMode == AuthMode.signup) ...[
+                        TextField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Full Name',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _signupPhoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: 'e.g., 9876543210',
+                            prefixText: '+91 ',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       TextField(
                         controller: _emailController,
                         decoration: const InputDecoration(
@@ -217,6 +244,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
                         obscureText: true,
+                        onSubmitted: (_) => _submitAuthForm(),
                       ),
                     ],
                     if (_authMethod == AuthMethod.phone) ...[

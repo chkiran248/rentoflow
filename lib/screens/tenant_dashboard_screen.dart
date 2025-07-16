@@ -8,6 +8,8 @@ import 'package:rentoflow/common/extensions.dart'; // For NumExtension
 import 'package:rentoflow/providers/firebase_provider.dart'; // For FirebaseProvider
 import 'package:rentoflow/screens/persona_selection_screen.dart'; // For navigation
 import 'package:rentoflow/screens/auth_screen.dart';
+import 'package:rentoflow/screens/owner_dashboard_screen.dart';
+import 'package:rentoflow/screens/profile_view.dart';
 import 'package:rentoflow/common/app_navigation_bar.dart';
 import 'package:rentoflow/services/data_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -72,7 +74,27 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
       bottomNavigationBar: AppNavigationBar(
         currentIndex: 1,
         onTap: (index) {
-          // TODO: Implement navigation logic for tenant dashboard
+          switch (index) {
+            case 0:
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+              );
+              break;
+            case 1:
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ProfileView(
+                    userName: firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'Tenant',
+                    userEmail: firebaseProvider.currentUser?.email ?? '',
+                  ),
+                ),
+              );
+              break;
+            case 2:
+              showSnackBar(context, "Settings feature coming soon!");
+              break;
+          }
         },
       ),
     );
@@ -81,13 +103,59 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
   Widget _buildTenantProfileSection(BuildContext context) {
     final firebaseProvider = Provider.of<FirebaseProvider>(context);
     final userName = firebaseProvider.currentUser?.displayName ?? firebaseProvider.currentUser?.email ?? 'Tenant User';
+    const appId = String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
     
-    final tenantProfile = {
-      'name': userName,
-      'phone': firebaseProvider.currentUser?.phoneNumber ?? 'Not provided',
-      'status': 'Active',
-      'property': 'Not assigned',
-    };
+    return StreamBuilder<QuerySnapshot>(
+      stream: firebaseProvider.db?.collectionGroup('tenants')
+          .where('email', isEqualTo: firebaseProvider.currentUser?.email ?? '')
+          .snapshots(),
+      builder: (context, tenantSnapshot) {
+        String propertyName = 'Not assigned';
+        String ownerName = 'Not assigned';
+        String propertyId = '';
+        
+        if (tenantSnapshot.hasData && tenantSnapshot.data!.docs.isNotEmpty) {
+          final tenantData = tenantSnapshot.data!.docs.first.data() as Map<String, dynamic>;
+          propertyId = tenantData['propertyId'] ?? '';
+        }
+        
+        return StreamBuilder<QuerySnapshot>(
+          stream: propertyId.isNotEmpty 
+              ? firebaseProvider.db?.collectionGroup('properties')
+                  .where(FieldPath.documentId, isEqualTo: propertyId)
+                  .snapshots()
+              : null,
+          builder: (context, propertySnapshot) {
+            if (propertySnapshot?.hasData == true && propertySnapshot!.data!.docs.isNotEmpty) {
+              final propertyData = propertySnapshot.data!.docs.first.data() as Map<String, dynamic>;
+              propertyName = propertyData['name'] ?? 'Not assigned';
+              
+              // Get owner info from the document path
+              final docPath = propertySnapshot.data!.docs.first.reference.path;
+              final ownerUserId = docPath.split('/')[3]; // Extract userId from path
+              
+              return StreamBuilder<DocumentSnapshot>(
+                stream: firebaseProvider.db?.collection('artifacts/$appId/users/$ownerUserId/profile').doc('info').snapshots(),
+                builder: (context, ownerSnapshot) {
+                  if (ownerSnapshot.hasData && ownerSnapshot.data!.exists) {
+                    final ownerData = ownerSnapshot.data!.data() as Map<String, dynamic>;
+                    ownerName = ownerData['name'] ?? 'Owner';
+                  }
+                  
+                  return _buildTenantProfileCard(context, userName, propertyName, ownerName);
+                },
+              );
+            }
+            
+            return _buildTenantProfileCard(context, userName, propertyName, ownerName);
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildTenantProfileCard(BuildContext context, String userName, String propertyName, String ownerName) {
+    final firebaseProvider = Provider.of<FirebaseProvider>(context);
 
     return CustomCard(
       child: Column(
